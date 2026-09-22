@@ -34,7 +34,8 @@ export function isLeapYear(year: number): boolean {
 // 获取星期几（0=周日）
 export function getWeekDay(year: number, month: number, day: number): number {
   const jdn = gregorianToJDN(year, month, day);
-  return (jdn + 2) % 7;
+  // 儒略日为0的日期是周一，故 (JDN+1) 对 7 取模得 0=周日
+  return (jdn + 1) % 7;
 }
 
 // 格式化日期

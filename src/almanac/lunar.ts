@@ -1,4 +1,5 @@
 import { LUNAR_YEAR_DATA } from '../data/lunar-data';
+import { SOLAR_TERM_DAYS } from '../data/solar-terms';
 import { TIAN_GAN, DI_ZHI, SHENG_XIAO, LUNAR_MONTH_NAMES, LUNAR_DAY_NAMES, SOLAR_TERMS } from './constants';
 import { gregorianToJDN, jdnToGregorian, getWeekDay, isLeapYear } from '../utils/date';
 
@@ -171,42 +172,21 @@ export function getHourGanZhi(dayGanZhi: string, hour: number): string {
   return TIAN_GAN[hourGanIndex] + DI_ZHI[hourZhiIndex];
 }
 
-// 节气计算（简化版，使用天文算法近似）
-const SOLAR_TERM_OFFSETS = [6, 20, 4, 19, 6, 21, 5, 20, 6, 21, 6, 21, 7, 23, 8, 23, 8, 23, 8, 24, 8, 22, 7, 22];
-
+// 当日节气（无则返回 undefined）
 export function getSolarTerm(year: number, month: number, day: number): string | undefined {
-  const termIndex = (month - 1) * 2;
-  const termIndex2 = (month - 1) * 2 + 1;
-
-  // 使用更精确的节气日期计算
   const dates = getSolarTermDates(year);
-
+  const termIndex = (month - 1) * 2;
   if (day === dates[termIndex]) return SOLAR_TERMS[termIndex];
-  if (day === dates[termIndex2]) return SOLAR_TERMS[termIndex2];
+  if (day === dates[termIndex + 1]) return SOLAR_TERMS[termIndex + 1];
   return undefined;
 }
 
-// 获取某年所有节气的日期（简化算法）
+// 节气精确公历日期表（天文算法，覆盖1900-2100年）
 export function getSolarTermDates(year: number): number[] {
-  const dates: number[] = [];
-  for (let i = 0; i < 24; i++) {
-    // 基于1900年的偏移，每年约偏移6小时
-    const baseYear = 1900;
-    const yearDiff = year - baseYear;
-    let day = SOLAR_TERM_OFFSETS[i];
-
-    // 粗略修正：每4年闰年影响
-    day += Math.floor(yearDiff * 0.25) - Math.floor(yearDiff / 100) + Math.floor(yearDiff / 400);
-
-    // 个别节气修正
-    const month = Math.floor(i / 2) + 1;
-    if (day > (month === 2 && isLeapYear(year) ? 29 : [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])) {
-      day -= (month === 2 && isLeapYear(year) ? 29 : [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]);
-    }
-
-    dates.push(day);
+  if (year < 1900 || year > 2100) {
+    throw new Error('Year out of range');
   }
-  return dates;
+  return SOLAR_TERM_DAYS[year - 1900];
 }
 
 // 获取某月所有节气信息

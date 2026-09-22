@@ -67,18 +67,19 @@ export function renderCalendar(app: HTMLElement) {
 
       const numEl = createElement('div', 'solar-day', String(d));
       const lunarInfo = solarToLunar(currentYear, currentMonth, d);
-      const lunarEl = createElement('div', 'lunar-day', lunarInfo.monthName);
+      // 农历行：初一显示月份名，其余显示日名；有节气时显示节气名
+      const lunarText = lunarInfo.solarTerm
+        ?? (lunarInfo.day === 1 ? lunarInfo.monthName : lunarInfo.dayName);
+      const lunarEl = createElement('div', 'lunar-day', lunarText);
 
-      // 节气标记
-      const term = lunarInfo.solarTerm;
-      if (term) {
+      // 节气标记（不覆盖公历日号）
+      if (lunarInfo.solarTerm) {
         box.classList.add('solar-term');
-        numEl.textContent = term;
       }
 
-      // 宜忌标记
+      // 宜忌标记：标注有“宜”的日子
       const yiJi = getDayYiJi(currentYear, currentMonth, d);
-      if (yiJi.ji.length > 0) {
+      if (yiJi.yi.length > 0) {
         box.classList.add('has-yi');
       }
 
@@ -96,7 +97,7 @@ export function renderCalendar(app: HTMLElement) {
     currentMonth = currentMonth - 1;
     if (currentMonth === 0) {
       currentMonth = 12;
-      currentYear = currentYear + 1;
+      currentYear = currentYear - 1;
     }
     renderMonth();
   });
@@ -105,7 +106,7 @@ export function renderCalendar(app: HTMLElement) {
     currentMonth = currentMonth + 1;
     if (currentMonth === 13) {
       currentMonth = 1;
-      currentYear = currentYear - 1;
+      currentYear = currentYear + 1;
     }
     renderMonth();
   });

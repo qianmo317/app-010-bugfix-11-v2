@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { solarToLunar, lunarToSolar, getYearGanZhi, getDayGanZhi, getSolarTermDates } from './lunar';
+import { solarToLunar, lunarToSolar, getYearGanZhi, getDayGanZhi, getSolarTermDates, getSolarTerm } from './lunar';
+import { getWeekDay } from '../utils/date';
 
 describe('农历转换', () => {
   // 关键日期验证
@@ -64,6 +65,52 @@ describe('节气计算', () => {
       expect(d).toBeGreaterThanOrEqual(1);
       expect(d).toBeLessThanOrEqual(31);
     });
+  });
+
+  it('节气日期应与权威万年历一致', () => {
+    // [公历年月日, 节气名]
+    const cases: Array<[[number, number, number], string]> = [
+      [[2024, 2, 4], '立春'],
+      [[2024, 4, 19], '谷雨'],
+      [[2024, 6, 5], '芒种'],
+      [[2024, 9, 7], '白露'],
+      [[2024, 12, 21], '冬至'],
+      [[2025, 2, 3], '立春'],
+      [[2026, 2, 4], '立春'],
+      [[2026, 9, 23], '秋分'],
+      [[2026, 12, 7], '大雪'],
+      [[2000, 1, 6], '小寒'],
+      [[1984, 2, 4], '立春'],
+    ];
+    for (const [[y, m, d], name] of cases) {
+      expect(getSolarTerm(y, m, d), `${y}-${m}-${d} 应为${name}`).toBe(name);
+    }
+    // 相邻日期不应误判为节气
+    expect(getSolarTerm(2024, 2, 5)).toBeUndefined();
+    expect(getSolarTerm(2026, 9, 22)).toBeUndefined();
+  });
+});
+
+describe('星期计算', () => {
+  it('应与内置 Date 的星期一致', () => {
+    const samples: Array<[number, number, number]> = [
+      [2024, 2, 10], [2025, 1, 1], [2026, 9, 22],
+      [1900, 1, 1], [2000, 2, 29], [2100, 3, 1],
+    ];
+    for (const [y, m, d] of samples) {
+      expect(getWeekDay(y, m, d)).toBe(new Date(y, m - 1, d).getDay());
+    }
+  });
+
+  it('全量抽查每月1日与月末', () => {
+    for (let y = 1900; y <= 2100; y += 3) {
+      for (let m = 1; m <= 12; m++) {
+        const last = new Date(y, m, 0).getDate();
+        for (const d of [1, last]) {
+          expect(getWeekDay(y, m, d)).toBe(new Date(y, m - 1, d).getDay());
+        }
+      }
+    }
   });
 });
 

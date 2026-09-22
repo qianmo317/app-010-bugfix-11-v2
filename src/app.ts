@@ -186,6 +186,22 @@ function injectStyles() {
       font-weight: bold;
     }
 
+    .day-cell.has-yi {
+      position: relative;
+      border-color: var(--secondary);
+    }
+
+    .day-cell.has-yi::after {
+      content: '宜';
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      font-size: 10px;
+      line-height: 1;
+      color: var(--secondary);
+      font-weight: bold;
+    }
+
     .solar-day {
       font-size: 16px;
       font-weight: bold;
