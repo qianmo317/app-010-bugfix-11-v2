@@ -181,6 +181,24 @@ function injectStyles() {
       background: #fff0f0;
     }
 
+    .day-cell.has-yi {
+      border-color: var(--secondary);
+    }
+
+    .day-cell.has-yi::after {
+      content: '宜';
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 10px;
+      color: var(--secondary);
+      font-weight: bold;
+    }
+
+    .day-cell {
+      position: relative;
+    }
+
     .day-cell.solar-term .lunar-day {
       color: var(--secondary);
       font-weight: bold;

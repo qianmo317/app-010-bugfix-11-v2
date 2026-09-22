@@ -31,10 +31,17 @@ export function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 }
 
-// 获取星期几（0=周日）
+// 获取星期几（0=周日，1=周一，…，6=周六）
+// JDN 0 为周一，故周日为 0 时偏移量为 1
 export function getWeekDay(year: number, month: number, day: number): number {
   const jdn = gregorianToJDN(year, month, day);
-  return (jdn + 2) % 7;
+  return (jdn + 1) % 7;
+}
+
+// 月份加减（delta 为正向后翻、为负向前翻），自动处理跨年
+export function shiftMonth(year: number, month: number, delta: number): [number, number] {
+  const total = year * 12 + (month - 1) + delta;
+  return [Math.floor(total / 12), (total % 12) + 1];
 }
 
 // 格式化日期

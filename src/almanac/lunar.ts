@@ -171,14 +171,55 @@ export function getHourGanZhi(dayGanZhi: string, hour: number): string {
   return TIAN_GAN[hourGanIndex] + DI_ZHI[hourZhiIndex];
 }
 
-// 节气计算（简化版，使用天文算法近似）
-const SOLAR_TERM_OFFSETS = [6, 20, 4, 19, 6, 21, 5, 20, 6, 21, 6, 21, 7, 23, 8, 23, 8, 23, 8, 24, 8, 22, 7, 22];
+// 节气计算：太阳视黄经（NOAA 低精度太阳算法）
+// 节气对应黄经：小寒285°、立春315°…… 每项递增15°。
+// 逐日按北京正午计算黄经，取最接近目标黄经的那一天，
+// 可正确处理交节时刻在午夜前后的日期归属。
+
+// 各节气在公历中的典型日，用于划定 ±5 天搜索窗口
+const SOLAR_TERM_NOMINAL_DAY = [
+  6, 20, 4, 19, 6, 21, 5, 20, 6, 21, 6, 21,
+  7, 23, 8, 23, 8, 23, 8, 24, 8, 22, 7, 22
+];
+
+// 某日（公历）北京正午 12:00 的太阳视黄经（度，0–360）
+function solarLongitude(year: number, month: number, day: number): number {
+  // 北京正午 = UTC 04:00；JDE 0 点为正午，故 jde = jdn - 0.5 + 4/24
+  const jde = gregorianToJDN(year, month, day) - 0.5 + 4 / 24;
+  const T = (jde - 2451545.0) / 36525;
+
+  // 几何平黄经
+  let L0 = 280.46646 + T * (36000.76983 + 0.0003032 * T);
+  L0 = ((L0 % 360) + 360) % 360;
+  // 平近点角
+  const Mr = (357.52911 + T * (35999.05029 - 0.0001537 * T)) * Math.PI / 180;
+  // 中心差
+  const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mr)
+    + (0.019993 - 0.000101 * T) * Math.sin(2 * Mr)
+    + 0.000289 * Math.sin(3 * Mr);
+  // 光行差与章动修正后的视黄经
+  const omega = (125.04 - 1934.136 * T) * Math.PI / 180;
+  const lambda = L0 + C - 0.00569 - 0.00478 * Math.sin(omega);
+  return ((lambda % 360) + 360) % 360;
+}
+
+// 与目标黄经的角距离（-180～180）
+function angularDistance(lon: number, target: number): number {
+  let d = lon - target;
+  while (d <= -180) d += 360;
+  while (d > 180) d -= 360;
+  return d;
+}
+
+// 公历日期加/减若干天
+function addGregorianDays(year: number, month: number, day: number, delta: number): [number, number, number] {
+  return jdnToGregorian(gregorianToJDN(year, month, day) + delta);
+}
 
 export function getSolarTerm(year: number, month: number, day: number): string | undefined {
   const termIndex = (month - 1) * 2;
   const termIndex2 = (month - 1) * 2 + 1;
 
-  // 使用更精确的节气日期计算
   const dates = getSolarTermDates(year);
 
   if (day === dates[termIndex]) return SOLAR_TERMS[termIndex];
@@ -186,26 +227,31 @@ export function getSolarTerm(year: number, month: number, day: number): string |
   return undefined;
 }
 
-// 获取某年所有节气的日期（简化算法）
+// 获取某年所有节气的日期（公历日，序号顺序与 SOLAR_TERMS 一致）
+// 结果按年缓存：同一年内所有日期复用同一份节气表
+const solarTermCache = new Map<number, number[]>();
+
 export function getSolarTermDates(year: number): number[] {
-  const dates: number[] = [];
-  for (let i = 0; i < 24; i++) {
-    // 基于1900年的偏移，每年约偏移6小时
-    const baseYear = 1900;
-    const yearDiff = year - baseYear;
-    let day = SOLAR_TERM_OFFSETS[i];
+  const cached = solarTermCache.get(year);
+  if (cached) return cached;
 
-    // 粗略修正：每4年闰年影响
-    day += Math.floor(yearDiff * 0.25) - Math.floor(yearDiff / 100) + Math.floor(yearDiff / 400);
-
-    // 个别节气修正
+  const dates = SOLAR_TERM_NOMINAL_DAY.map((nominal, i) => {
+    const target = (285 + 15 * i) % 360;
     const month = Math.floor(i / 2) + 1;
-    if (day > (month === 2 && isLeapYear(year) ? 29 : [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])) {
-      day -= (month === 2 && isLeapYear(year) ? 29 : [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]);
+    let bestDay = nominal;
+    let bestDist = Infinity;
+    for (let off = -5; off <= 5; off++) {
+      const [y, m, d] = addGregorianDays(year, month, nominal, off);
+      const dist = Math.abs(angularDistance(solarLongitude(y, m, d), target));
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestDay = d;
+      }
     }
+    return bestDay;
+  });
 
-    dates.push(day);
-  }
+  solarTermCache.set(year, dates);
   return dates;
 }
 

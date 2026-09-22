@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { solarToLunar, lunarToSolar, getYearGanZhi, getDayGanZhi, getSolarTermDates } from './lunar';
+import { solarToLunar, lunarToSolar, getYearGanZhi, getDayGanZhi, getSolarTermDates, getSolarTerm } from './lunar';
+import { SOLAR_TERMS } from './constants';
 
 describe('农历转换', () => {
   // 关键日期验证
@@ -64,6 +65,42 @@ describe('节气计算', () => {
       expect(d).toBeGreaterThanOrEqual(1);
       expect(d).toBeLessThanOrEqual(31);
     });
+  });
+
+  // 权威节气公历日（小寒→大寒顺序），可与紫金山天文台年历核对
+  const TERM_DATES: Record<number, number[]> = {
+    2021: [5,20,3,18,5,20,4,20,5,21,5,21,7,22,7,23,7,23,8,23,7,22,7,21],
+    2022: [5,20,4,19,5,20,5,20,5,21,6,21,7,23,7,23,7,23,8,23,7,22,7,22],
+    2023: [5,20,4,19,6,21,5,20,6,21,6,21,7,23,8,23,8,23,8,24,8,22,7,22],
+    2024: [6,20,4,19,5,20,4,19,5,20,5,21,6,22,7,22,7,22,8,23,7,22,6,21],
+    2025: [5,20,3,18,5,20,4,20,5,21,5,21,7,22,7,23,7,23,8,23,7,22,7,21],
+    2026: [5,20,4,18,5,20,5,20,5,21,5,21,7,23,7,23,7,23,8,23,7,22,7,22],
+  };
+
+  Object.entries(TERM_DATES).forEach(([year, expected]) => {
+    it(`${year} 年24节气日期应与权威年历一致`, () => {
+      const dates = getSolarTermDates(Number(year));
+      expected.forEach((day, i) => {
+        expect(dates[i], `${year}年${SOLAR_TERMS[i]}`).toBe(day);
+      });
+    });
+  });
+
+  it('节气边界抽查（立春/秋分/冬至）', () => {
+    expect(getSolarTerm(2024, 2, 4)).toBe('立春');
+    expect(getSolarTerm(2024, 9, 22)).toBe('秋分');
+    expect(getSolarTerm(2025, 12, 21)).toBe('冬至');
+    expect(getSolarTerm(2024, 2, 5)).toBeUndefined();
+  });
+
+  it('1900-2100 全部节气日期均在合理窗口内', () => {
+    const nominal = [6,20,4,19,6,21,5,20,6,21,6,21,7,23,8,23,8,23,8,24,8,22,7,22];
+    for (let year = 1900; year <= 2100; year++) {
+      const dates = getSolarTermDates(year);
+      dates.forEach((day, i) => {
+        expect(Math.abs(day - nominal[i])).toBeLessThanOrEqual(5);
+      });
+    }
   });
 });
 

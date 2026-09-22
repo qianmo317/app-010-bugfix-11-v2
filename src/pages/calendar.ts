@@ -3,7 +3,7 @@ import { createElement, clearElement } from '../utils/dom';
 import { solarToLunar } from '../almanac/lunar';
 import { getDayYiJi } from '../almanac/yiji';
 import { WEEK_DAYS } from '../almanac/constants';
-import { getWeekDay, daysInMonth } from '../utils/date';
+import { getWeekDay, daysInMonth, shiftMonth } from '../utils/date';
 
 export function renderCalendar(app: HTMLElement) {
   clearElement(app);
@@ -67,18 +67,20 @@ export function renderCalendar(app: HTMLElement) {
 
       const numEl = createElement('div', 'solar-day', String(d));
       const lunarInfo = solarToLunar(currentYear, currentMonth, d);
-      const lunarEl = createElement('div', 'lunar-day', lunarInfo.monthName);
+      // 初一（农历月首）显示月名，其余日子显示日名
+      const lunarLabel = lunarInfo.day === 1 ? lunarInfo.monthName : lunarInfo.dayName;
+      const lunarEl = createElement('div', 'lunar-day', lunarLabel);
 
-      // 节气标记
+      // 节气标记：节气名显示在农历行，不覆盖公历日号
       const term = lunarInfo.solarTerm;
       if (term) {
         box.classList.add('solar-term');
-        numEl.textContent = term;
+        lunarEl.textContent = term;
       }
 
-      // 宜忌标记
+      // 宜忌标记：有“宜”的日子标出
       const yiJi = getDayYiJi(currentYear, currentMonth, d);
-      if (yiJi.ji.length > 0) {
+      if (yiJi.yi.length > 0) {
         box.classList.add('has-yi');
       }
 
@@ -93,20 +95,12 @@ export function renderCalendar(app: HTMLElement) {
   }
 
   prevBtn.addEventListener('click', () => {
-    currentMonth = currentMonth - 1;
-    if (currentMonth === 0) {
-      currentMonth = 12;
-      currentYear = currentYear + 1;
-    }
+    [currentYear, currentMonth] = shiftMonth(currentYear, currentMonth, -1);
     renderMonth();
   });
 
   nextBtn.addEventListener('click', () => {
-    currentMonth = currentMonth + 1;
-    if (currentMonth === 13) {
-      currentMonth = 1;
-      currentYear = currentYear - 1;
-    }
+    [currentYear, currentMonth] = shiftMonth(currentYear, currentMonth, 1);
     renderMonth();
   });
 
